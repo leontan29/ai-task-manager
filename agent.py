@@ -111,7 +111,7 @@ You can also sort results by due_date to show the most urgent tasks first.""".fo
 
 
 def init_db():
-    """Create the tasks table if it doesn't exist and return the connection.
+    """Create the users and tasks tables if they don't exist and return the connection.
 
     Raises DatabaseError on failure.
     """
@@ -122,6 +122,23 @@ def init_db():
         raise DatabaseError(f"Cannot open database at {DATABASE_PATH}: {e}")
 
     try:
+        # Enable foreign keys
+        conn.execute("PRAGMA foreign_keys = ON")
+
+        # Users table
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+            """
+        )
+
+        # Tasks table
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS tasks (
@@ -132,14 +149,16 @@ def init_db():
                 status TEXT DEFAULT 'pending',
                 created_at TEXT DEFAULT (datetime('now')),
                 due_date TEXT DEFAULT NULL,
-                category TEXT DEFAULT NULL
+                category TEXT DEFAULT NULL,
+                user_id INTEGER,
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
             """
         )
         conn.commit()
     except sqlite3.Error as e:
         conn.close()
-        raise DatabaseError(f"Failed to create tasks table: {e}")
+        raise DatabaseError(f"Failed to create tables: {e}")
 
     # Migrate: add category column if it doesn't exist (for existing databases)
     try:
@@ -151,6 +170,17 @@ def init_db():
         except sqlite3.Error as e:
             conn.close()
             raise DatabaseError(f"Failed to migrate database (add category column): {e}")
+
+    # Migrate: add user_id column if it doesn't exist (for existing databases)
+    try:
+        conn.execute("SELECT user_id FROM tasks LIMIT 1")
+    except sqlite3.OperationalError:
+        try:
+            conn.execute("ALTER TABLE tasks ADD COLUMN user_id INTEGER DEFAULT NULL")
+            conn.commit()
+        except sqlite3.Error as e:
+            conn.close()
+            raise DatabaseError(f"Failed to migrate database (add user_id column): {e}")
 
     return conn
 
@@ -376,7 +406,7 @@ TOOLS = [
 # ---------------------------------------------------------------------------
 
 
-def handle_add_task(conn, data):
+def handle_add_task(conn, data, user_id=None):
     try:
         title = data.get("title", "").strip()
         if not title:
@@ -401,8 +431,8 @@ def handle_add_task(conn, data):
             return "Error: category name is too long (max 50 characters)."
 
         cursor = conn.execute(
-            "INSERT INTO tasks (title, description, priority, due_date, category) VALUES (?, ?, ?, ?, ?)",
-            (title, description, priority, due_date, category),
+            "INSERT INTO tasks (title, description, priority, due_date, category, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (title, description, priority, due_date, category, user_id),
         )
         conn.commit()
         task_id = cursor.lastrowid
@@ -420,11 +450,16 @@ def handle_add_task(conn, data):
         return f"Error adding task: {e}"
 
 
-def handle_list_tasks(conn, data):
+def handle_list_tasks(conn, data, user_id=None):
     try:
         query = "SELECT * FROM tasks"
         conditions = []
         params = []
+
+        # Filter by user if authenticated
+        if user_id is not None:
+            conditions.append("user_id = ?")
+            params.append(user_id)
 
         if "status" in data:
             conditions.append("status = ?")
@@ -480,13 +515,16 @@ def handle_list_tasks(conn, data):
         return f"Error listing tasks: {e}"
 
 
-def handle_update_task(conn, data):
+def handle_update_task(conn, data, user_id=None):
     try:
         task_id = data.get("task_id")
         if task_id is None:
             return "Error: task_id is required."
 
-        row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if user_id is not None:
+            row = conn.execute("SELECT * FROM tasks WHERE id = ? AND user_id = ?", (task_id, user_id)).fetchone()
+        else:
+            row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if not row:
             return f"No task found with ID {task_id}."
 
@@ -531,13 +569,16 @@ def handle_update_task(conn, data):
         return f"Error updating task: {e}"
 
 
-def handle_complete_task(conn, data):
+def handle_complete_task(conn, data, user_id=None):
     try:
         task_id = data.get("task_id")
         if task_id is None:
             return "Error: task_id is required."
 
-        row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if user_id is not None:
+            row = conn.execute("SELECT * FROM tasks WHERE id = ? AND user_id = ?", (task_id, user_id)).fetchone()
+        else:
+            row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if not row:
             return f"No task found with ID {task_id}."
 
@@ -557,13 +598,16 @@ def handle_complete_task(conn, data):
         return f"Error completing task: {e}"
 
 
-def handle_delete_task(conn, data):
+def handle_delete_task(conn, data, user_id=None):
     try:
         task_id = data.get("task_id")
         if task_id is None:
             return "Error: task_id is required."
 
-        row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if user_id is not None:
+            row = conn.execute("SELECT * FROM tasks WHERE id = ? AND user_id = ?", (task_id, user_id)).fetchone()
+        else:
+            row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if not row:
             return f"No task found with ID {task_id}."
 
@@ -591,10 +635,10 @@ TOOL_HANDLERS = {
 }
 
 
-def execute_tool(conn, tool_name, tool_input):
+def execute_tool(conn, tool_name, tool_input, user_id=None):
     handler = TOOL_HANDLERS.get(tool_name)
     if handler:
-        return handler(conn, tool_input)
+        return handler(conn, tool_input, user_id=user_id)
     log.warning(f"Unknown tool requested: {tool_name}")
     return f"Unknown tool: {tool_name}"
 
@@ -604,7 +648,7 @@ def execute_tool(conn, tool_name, tool_input):
 # ---------------------------------------------------------------------------
 
 
-def process_user_input(conn, user_message):
+def process_user_input(conn, user_message, user_id=None):
     """Send the user's message to Claude and execute any tool calls.
 
     Raises:
@@ -664,7 +708,7 @@ def process_user_input(conn, user_message):
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
-                    result = execute_tool(conn, block.name, block.input)
+                    result = execute_tool(conn, block.name, block.input, user_id=user_id)
                     tool_results.append(
                         {
                             "type": "tool_result",

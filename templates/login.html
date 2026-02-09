@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Task Manager — Sign In</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: #1a1a1a;
+            border: 1px solid #282828;
+            border-radius: 12px;
+            padding: 36px 32px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .auth-header p {
+            color: #888;
+            font-size: 0.88rem;
+        }
+
+        /* Tabs */
+        .auth-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 28px;
+            border-bottom: 1px solid #333;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #666;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auth-tab:hover { color: #aaa; }
+
+        .auth-tab.active {
+            color: #5b8def;
+            border-bottom-color: #5b8def;
+        }
+
+        /* Form */
+        .auth-form { display: flex; flex-direction: column; gap: 16px; }
+
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+        .form-group label {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #aaa;
+        }
+
+        .form-group input {
+            padding: 12px 14px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus { border-color: #5b8def; }
+        .form-group input::placeholder { color: #555; }
+        .form-group input.input-error { border-color: #ef6461; }
+
+        .submit-btn {
+            padding: 12px 24px;
+            background: #5b8def;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 4px;
+        }
+
+        .submit-btn:hover { background: #4a7de0; }
+        .submit-btn:disabled { background: #333; cursor: not-allowed; }
+
+        /* Error message */
+        .form-error {
+            padding: 10px 14px;
+            background: #2a1515;
+            border: 1px solid #5c2020;
+            border-radius: 8px;
+            color: #f0a0a0;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .form-error.visible { display: block; }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #666;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Hidden panels */
+        .auth-panel { display: none; }
+        .auth-panel.active { display: flex; flex-direction: column; gap: 16px; }
+
+        /* ---- Responsive ---- */
+        @media (max-width: 480px) {
+            .auth-container { padding: 16px 12px; }
+
+            .auth-card {
+                padding: 28px 20px;
+                border-radius: 10px;
+            }
+
+            .auth-header h1 { font-size: 1.35rem; }
+
+            .form-group input {
+                font-size: 16px;
+                padding: 14px 14px;
+            }
+
+            .submit-btn {
+                font-size: 16px;
+                padding: 14px 20px;
+                min-height: 48px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .auth-card { padding: 24px 16px; }
+            .auth-header h1 { font-size: 1.2rem; }
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .submit-btn:active:not(:disabled) {
+                background: #3a6ad0;
+                transform: scale(0.98);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Task Manager</h1>
+                <p>AI-powered task management</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+                <button class="auth-tab" id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+            </div>
+
+            <div class="form-error" id="formError"></div>
+
+            <!-- Login panel -->
+            <form class="auth-panel active" id="loginPanel" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" placeholder="Enter your username" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="submit-btn" id="loginBtn">Sign In</button>
+            </form>
+
+            <!-- Signup panel -->
+            <form class="auth-panel" id="signupPanel" onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label for="signupUsername">Username</label>
+                    <input type="text" id="signupUsername" placeholder="Choose a username" autocomplete="username" required
+                           pattern="[a-zA-Z0-9_]{3,30}" title="3-30 characters: letters, numbers, underscores">
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" placeholder="At least 6 characters" autocomplete="new-password" required minlength="6">
+                </div>
+                <button type="submit" class="submit-btn" id="signupBtn">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const formError = document.getElementById("formError");
+
+        function switchTab(tab) {
+            document.getElementById("tabLogin").classList.toggle("active", tab === "login");
+            document.getElementById("tabSignup").classList.toggle("active", tab === "signup");
+            document.getElementById("loginPanel").classList.toggle("active", tab === "login");
+            document.getElementById("signupPanel").classList.toggle("active", tab === "signup");
+            formError.classList.remove("visible");
+        }
+
+        // Auto-switch if URL is /signup
+        if (window.location.pathname === "/signup") switchTab("signup");
+
+        function showError(msg) {
+            formError.textContent = msg;
+            formError.classList.add("visible");
+        }
+
+        function setLoading(btn, loading) {
+            if (loading) {
+                btn.disabled = true;
+                btn.dataset.origText = btn.textContent;
+                btn.innerHTML = '<span class="spinner"></span> Please wait...';
+            } else {
+                btn.disabled = false;
+                btn.textContent = btn.dataset.origText || btn.textContent;
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            formError.classList.remove("visible");
+
+            const username = document.getElementById("loginUsername").value.trim();
+            const password = document.getElementById("loginPassword").value;
+            const btn = document.getElementById("loginBtn");
+
+            if (!username || !password) {
+                showError("Please enter both username and password.");
+                return;
+            }
+
+            setLoading(btn, true);
+            try {
+                const res = await fetch("/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password }),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    window.location.href = data.redirect || "/";
+                } else {
+                    showError(data.error || "Login failed.");
+                }
+            } catch {
+                showError("Cannot reach the server. Please try again.");
+            }
+            setLoading(btn, false);
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            formError.classList.remove("visible");
+
+            const username = document.getElementById("signupUsername").value.trim();
+            const email = document.getElementById("signupEmail").value.trim();
+            const password = document.getElementById("signupPassword").value;
+            const btn = document.getElementById("signupBtn");
+
+            if (!username || !email || !password) {
+                showError("Please fill in all fields.");
+                return;
+            }
+            if (password.length < 6) {
+                showError("Password must be at least 6 characters.");
+                return;
+            }
+
+            setLoading(btn, true);
+            try {
+                const res = await fetch("/signup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, email, password }),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    window.location.href = data.redirect || "/";
+                } else {
+                    showError(data.error || "Signup failed.");
+                }
+            } catch {
+                showError("Cannot reach the server. Please try again.");
+            }
+            setLoading(btn, false);
+        }
+    </script>
+</body>
+</html>

@@ -361,6 +361,62 @@
             font-size: 0.9rem;
         }
 
+        /* ---- Navbar ---- */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #1e1e1e;
+        }
+
+        .navbar-brand {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar h1 {
+            margin-bottom: 2px;
+        }
+
+        .navbar .subtitle {
+            margin-bottom: 0;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .navbar-username {
+            font-size: 0.85rem;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .navbar-username span {
+            color: #ccc;
+        }
+
+        .logout-btn {
+            padding: 7px 14px;
+            background: transparent;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #888;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            border-color: #ef6461;
+            color: #ef6461;
+        }
+
         /* =============================================================
            RESPONSIVE — Tablet (≤ 768px)
            ============================================================= */
@@ -422,6 +478,24 @@
             .subtitle {
                 font-size: 0.82rem;
                 margin-bottom: 20px;
+            }
+
+            .navbar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                margin-bottom: 20px;
+                padding-bottom: 12px;
+            }
+
+            .navbar-user {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .logout-btn {
+                padding: 8px 16px;
+                min-height: 36px;
             }
 
             /* Input: stack vertically, full-width button */
@@ -645,13 +719,26 @@
             .toolbar .reset-btn:active {
                 background: rgba(255,255,255,0.06);
             }
+
+            .logout-btn:active {
+                border-color: #ef6461;
+                color: #ef6461;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Task Manager</h1>
-        <p class="subtitle">Type natural language commands &mdash; supports due dates, categories, priorities</p>
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>Task Manager</h1>
+                <p class="subtitle">Type natural language commands &mdash; supports due dates, categories, priorities</p>
+            </div>
+            <div class="navbar-user">
+                <span class="navbar-username">Signed in as <span>{{ user.username }}</span></span>
+                <a href="/logout" class="logout-btn">Sign Out</a>
+            </div>
+        </nav>
 
         <!-- Global alert banner -->
         <div class="alert alert-error" id="alertBanner">
