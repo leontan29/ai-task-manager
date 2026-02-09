@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Task Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 840px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 32px;
+        }
+
+        /* ---- Error alert ---- */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            display: none;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .alert.visible { display: flex; }
+
+        .alert-error {
+            background: #2a1515;
+            border: 1px solid #5c2020;
+            color: #f0a0a0;
+        }
+
+        .alert-warning {
+            background: #2a2515;
+            border: 1px solid #5c4d20;
+            color: #f0d8a0;
+        }
+
+        .alert-icon {
+            flex-shrink: 0;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+
+        .alert-body { flex: 1; }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .alert-message {
+            opacity: 0.9;
+        }
+
+        .alert-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .alert-btn {
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: inherit;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .alert-btn:hover { background: rgba(255,255,255,0.12); }
+
+        .alert-close {
+            flex-shrink: 0;
+            background: none;
+            border: none;
+            color: inherit;
+            opacity: 0.5;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0 2px;
+            line-height: 1;
+        }
+
+        .alert-close:hover { opacity: 0.9; }
+
+        /* ---- Command input ---- */
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-area input:focus { border-color: #5b8def; }
+        .input-area input::placeholder { color: #555; }
+        .input-area input.input-error { border-color: #ef6461; }
+
+        .input-area button {
+            padding: 12px 24px;
+            background: #5b8def;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .input-area button:hover { background: #4a7de0; }
+        .input-area button:disabled { background: #333; cursor: not-allowed; }
+
+        .input-hint {
+            font-size: 0.75rem;
+            height: 20px;
+            line-height: 20px;
+            margin-bottom: 20px;
+            padding-left: 2px;
+        }
+
+        .input-hint.error { color: #ef6461; }
+        .input-hint.info { color: #666; }
+
+        /* ---- Assistant response ---- */
+        .response-box {
+            background: #1a1a1a;
+            border: 1px solid #282828;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 32px;
+            min-height: 48px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            display: none;
+        }
+
+        .response-box.visible { display: block; }
+
+        .response-box .label {
+            color: #5b8def;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .response-box.response-error {
+            border-color: #5c2020;
+        }
+
+        .response-box.response-error .label {
+            color: #ef6461;
+        }
+
+        /* ---- Spinner ---- */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-top-color: #5b8def;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---- Toolbar: filters & sort ---- */
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .toolbar select {
+            padding: 6px 10px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 0.82rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .toolbar select:focus { border-color: #5b8def; }
+
+        .toolbar .separator {
+            width: 1px;
+            height: 20px;
+            background: #333;
+            margin: 0 4px;
+        }
+
+        .toolbar .reset-btn {
+            padding: 5px 10px;
+            background: transparent;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #888;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toolbar .reset-btn:hover { border-color: #555; color: #ccc; }
+
+        /* ---- Section header ---- */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .section-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ccc;
+        }
+
+        .task-count {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        /* ---- Task list ---- */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .task-card {
+            background: #1a1a1a;
+            border: 1px solid #282828;
+            border-radius: 8px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .task-card:hover { border-color: #383838; }
+
+        .task-card.overdue {
+            border-left: 3px solid #ef6461;
+        }
+
+        .task-id {
+            color: #555;
+            font-size: 0.8rem;
+            font-weight: 500;
+            min-width: 28px;
+        }
+
+        .task-info { flex: 1; }
+
+        .task-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: #e0e0e0;
+        }
+
+        .task-card.completed .task-title {
+            text-decoration: line-through;
+            color: #666;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+            font-size: 0.78rem;
+            color: #666;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* ---- Badges ---- */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-status { background: #1e2a1e; color: #6abf69; }
+        .badge-status.in_progress { background: #2a2a1e; color: #d4b44a; }
+        .badge-status.completed { background: #1e1e2a; color: #888; }
+
+        .badge-priority { background: #1e1e1e; color: #888; }
+        .badge-priority.high { background: #2a1e1e; color: #e07a5f; }
+        .badge-priority.urgent { background: #3a1e1e; color: #ef6461; }
+
+        .due-label { color: #888; }
+        .due-label.overdue { color: #ef6461; font-weight: 600; }
+
+        .badge-category {
+            border-radius: 10px;
+            padding: 2px 9px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: lowercase;
+            letter-spacing: 0.02em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        /* =============================================================
+           RESPONSIVE — Tablet (≤ 768px)
+           ============================================================= */
+        @media (max-width: 768px) {
+            .container {
+                padding: 28px 16px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                margin-bottom: 24px;
+            }
+
+            /* Toolbar: let selects grow a bit */
+            .toolbar {
+                gap: 6px;
+            }
+
+            .toolbar select {
+                padding: 8px 10px;
+                font-size: 0.84rem;
+            }
+
+            .toolbar .reset-btn {
+                padding: 8px 12px;
+            }
+
+            /* Task cards */
+            .task-card {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+
+            .response-box {
+                padding: 14px 16px;
+                margin-bottom: 24px;
+            }
+        }
+
+        /* =============================================================
+           RESPONSIVE — Mobile (≤ 480px)
+           ============================================================= */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px 12px;
+                /* Safe area insets for notched iPhones */
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+                padding-bottom: max(20px, env(safe-area-inset-bottom));
+            }
+
+            h1 {
+                font-size: 1.35rem;
+            }
+
+            .subtitle {
+                font-size: 0.82rem;
+                margin-bottom: 20px;
+            }
+
+            /* Input: stack vertically, full-width button */
+            .input-area {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .input-area input {
+                /* 16px font prevents iOS zoom-on-focus */
+                font-size: 16px;
+                padding: 14px 14px;
+                border-radius: 10px;
+            }
+
+            .input-area button {
+                /* Full-width, tall thumb target (48px+) */
+                width: 100%;
+                padding: 14px 20px;
+                font-size: 16px;
+                border-radius: 10px;
+                min-height: 48px;
+            }
+
+            .input-hint {
+                margin-bottom: 16px;
+            }
+
+            /* Alert banner: tighter */
+            .alert {
+                padding: 10px 12px;
+                font-size: 0.82rem;
+                gap: 8px;
+                border-radius: 8px;
+            }
+
+            .alert-btn {
+                padding: 6px 14px;
+                font-size: 0.78rem;
+                min-height: 36px;
+            }
+
+            .alert-close {
+                font-size: 1.3rem;
+                padding: 4px 6px;
+                min-width: 36px;
+                min-height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* Response box */
+            .response-box {
+                padding: 12px 14px;
+                margin-bottom: 20px;
+                font-size: 0.85rem;
+                border-radius: 10px;
+            }
+
+            /* Section header */
+            .section-header {
+                margin-bottom: 10px;
+            }
+
+            .section-header h2 {
+                font-size: 1rem;
+            }
+
+            /* Toolbar: full-width grid on mobile */
+            .toolbar {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .toolbar select {
+                width: 100%;
+                padding: 10px 10px;
+                font-size: 14px;
+                border-radius: 8px;
+                min-height: 44px;
+                /* Fix iOS default select styling */
+                -webkit-appearance: none;
+                appearance: none;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                padding-right: 28px;
+            }
+
+            .toolbar .separator {
+                display: none;
+            }
+
+            .toolbar .reset-btn {
+                grid-column: 1 / -1;
+                padding: 10px 12px;
+                font-size: 0.82rem;
+                min-height: 44px;
+                border-radius: 8px;
+            }
+
+            /* Task cards */
+            .task-list {
+                gap: 6px;
+            }
+
+            .task-card {
+                padding: 12px;
+                gap: 10px;
+                border-radius: 10px;
+            }
+
+            .task-id {
+                font-size: 0.75rem;
+                min-width: 24px;
+            }
+
+            .task-title {
+                font-size: 0.9rem;
+            }
+
+            .task-meta {
+                gap: 6px;
+                margin-top: 6px;
+            }
+
+            .badge {
+                font-size: 0.68rem;
+                padding: 3px 7px;
+            }
+
+            .badge-category {
+                font-size: 0.66rem;
+                padding: 3px 8px;
+            }
+
+            .due-label {
+                font-size: 0.73rem;
+            }
+
+            .empty-state {
+                padding: 36px 16px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* =============================================================
+           RESPONSIVE — Small phones (≤ 360px, e.g. iPhone SE)
+           ============================================================= */
+        @media (max-width: 360px) {
+            .container {
+                padding: 16px 10px;
+            }
+
+            h1 {
+                font-size: 1.2rem;
+            }
+
+            .subtitle {
+                font-size: 0.78rem;
+            }
+
+            .input-area input {
+                padding: 12px 12px;
+            }
+
+            .input-area button {
+                padding: 12px 16px;
+            }
+
+            /* Stack toolbar to single column */
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .task-card {
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .task-title {
+                font-size: 0.85rem;
+            }
+
+            .task-meta {
+                gap: 5px;
+            }
+
+            .badge {
+                font-size: 0.65rem;
+                padding: 2px 6px;
+            }
+        }
+
+        /* =============================================================
+           Touch-device improvements
+           ============================================================= */
+        @media (hover: none) and (pointer: coarse) {
+            /* Remove hover effects that feel wrong on touch */
+            .task-card:hover {
+                border-color: #282828;
+            }
+
+            .task-card.overdue:hover {
+                border-color: #282828;
+                border-left-color: #ef6461;
+            }
+
+            /* Add active/pressed states instead */
+            .input-area button:active:not(:disabled) {
+                background: #3a6ad0;
+                transform: scale(0.98);
+            }
+
+            .alert-btn:active {
+                background: rgba(255,255,255,0.18);
+            }
+
+            .toolbar .reset-btn:active {
+                background: rgba(255,255,255,0.06);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Task Manager</h1>
+        <p class="subtitle">Type natural language commands &mdash; supports due dates, categories, priorities</p>
+
+        <!-- Global alert banner -->
+        <div class="alert alert-error" id="alertBanner">
+            <span class="alert-icon">!</span>
+            <div class="alert-body">
+                <div class="alert-title" id="alertTitle">Error</div>
+                <div class="alert-message" id="alertMessage"></div>
+                <div class="alert-actions" id="alertActions"></div>
+            </div>
+            <button class="alert-close" onclick="dismissAlert()">&times;</button>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="commandInput"
+                   placeholder='e.g. "add buy groceries due tomorrow category shopping"'
+                   maxlength="1000"
+                   autofocus>
+            <button id="sendBtn" onclick="sendCommand()">Send</button>
+        </div>
+        <div class="input-hint info" id="inputHint">&nbsp;</div>
+
+        <div class="response-box" id="responseBox">
+            <div class="label" id="responseLabel">Assistant</div>
+            <div id="responseText"></div>
+        </div>
+
+        <div class="section-header">
+            <h2>Tasks</h2>
+            <span class="task-count" id="taskCount"></span>
+        </div>
+
+        <div class="toolbar" id="toolbar">
+            <select id="filterCategory">
+                <option value="">All categories</option>
+            </select>
+            <select id="filterStatus">
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+            </select>
+            <div class="separator"></div>
+            <select id="sortBy">
+                <option value="id">Sort: Default</option>
+                <option value="due_date">Sort: Due date</option>
+                <option value="priority">Sort: Priority</option>
+                <option value="category">Sort: Category</option>
+            </select>
+            <button class="reset-btn" onclick="resetFilters()">Reset</button>
+        </div>
+
+        <div class="task-list" id="taskList">
+            <div class="empty-state">Loading tasks...</div>
+        </div>
+    </div>
+
+    <script>
+        /* ================================================================
+           DOM refs
+           ================================================================ */
+        const input        = document.getElementById("commandInput");
+        const sendBtn      = document.getElementById("sendBtn");
+        const inputHint    = document.getElementById("inputHint");
+        const responseBox  = document.getElementById("responseBox");
+        const responseLabel = document.getElementById("responseLabel");
+        const responseText = document.getElementById("responseText");
+        const taskList     = document.getElementById("taskList");
+        const taskCount    = document.getElementById("taskCount");
+        const filterCategory = document.getElementById("filterCategory");
+        const filterStatus = document.getElementById("filterStatus");
+        const sortBy       = document.getElementById("sortBy");
+
+        // Alert banner
+        const alertBanner  = document.getElementById("alertBanner");
+        const alertTitle   = document.getElementById("alertTitle");
+        const alertMessage = document.getElementById("alertMessage");
+        const alertActions = document.getElementById("alertActions");
+
+        /* ================================================================
+           State
+           ================================================================ */
+        let allTasks = [];
+        let allCategories = [];
+        const MAX_LENGTH = 1000;
+        const REQUEST_TIMEOUT_MS = 60000;  // 60 seconds
+
+        /* ================================================================
+           Alert system
+           ================================================================ */
+
+        const ERROR_TITLES = {
+            input_error:    "Invalid Input",
+            config_error:   "Configuration Error",
+            database_error: "Database Error",
+            api_error:      "AI Service Error",
+            network_error:  "Connection Error",
+            timeout_error:  "Request Timeout",
+            server_error:   "Server Error",
+        };
+
+        function showAlert(errorType, message, options = {}) {
+            const title = options.title || ERROR_TITLES[errorType] || "Error";
+            alertBanner.className = "alert visible " + (errorType === "config_error" ? "alert-warning" : "alert-error");
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+
+            // Build action buttons
+            alertActions.innerHTML = "";
+            if (options.retry) {
+                const btn = document.createElement("button");
+                btn.className = "alert-btn";
+                btn.textContent = "Retry";
+                btn.onclick = () => { dismissAlert(); options.retry(); };
+                alertActions.appendChild(btn);
+            }
+            if (options.actions) {
+                options.actions.forEach(a => {
+                    const btn = document.createElement("button");
+                    btn.className = "alert-btn";
+                    btn.textContent = a.label;
+                    btn.onclick = () => { dismissAlert(); a.action(); };
+                    alertActions.appendChild(btn);
+                });
+            }
+
+            // Auto-dismiss non-critical errors after 10s
+            if (!["config_error", "database_error"].includes(errorType)) {
+                clearTimeout(showAlert._timer);
+                showAlert._timer = setTimeout(dismissAlert, 10000);
+            }
+        }
+
+        function dismissAlert() {
+            alertBanner.classList.remove("visible");
+            clearTimeout(showAlert._timer);
+        }
+
+        /* ================================================================
+           Input validation (client-side)
+           ================================================================ */
+
+        function validateInput(text) {
+            if (!text || !text.trim()) {
+                return { valid: false, error: "Please enter a command." };
+            }
+            text = text.trim();
+            if (text.length > MAX_LENGTH) {
+                return { valid: false, error: `Too long (${text.length}/${MAX_LENGTH} characters).` };
+            }
+            return { valid: true, text };
+        }
+
+        // Live character count
+        input.addEventListener("input", () => {
+            const len = input.value.length;
+            input.classList.remove("input-error");
+            if (len > MAX_LENGTH * 0.9) {
+                inputHint.textContent = `${len}/${MAX_LENGTH} characters`;
+                inputHint.className = len > MAX_LENGTH ? "input-hint error" : "input-hint info";
+                if (len > MAX_LENGTH) input.classList.add("input-error");
+            } else {
+                inputHint.innerHTML = "&nbsp;";
+                inputHint.className = "input-hint info";
+            }
+        });
+
+        /* ================================================================
+           Category colors
+           ================================================================ */
+        const CATEGORY_PALETTES = [
+            { bg: "#1e2a2e", fg: "#56c8d8" },
+            { bg: "#2a1e2e", fg: "#c77dba" },
+            { bg: "#2e2a1e", fg: "#d4a44a" },
+            { bg: "#1e2e1e", fg: "#6abf69" },
+            { bg: "#2e1e1e", fg: "#e07a5f" },
+            { bg: "#1e1e2e", fg: "#7a8def" },
+            { bg: "#2e2e1e", fg: "#a8b84a" },
+            { bg: "#2e1e2a", fg: "#e06a8a" },
+        ];
+
+        function categoryColor(name) {
+            if (!name) return CATEGORY_PALETTES[0];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            return CATEGORY_PALETTES[Math.abs(hash) % CATEGORY_PALETTES.length];
+        }
+
+        /* ================================================================
+           Events
+           ================================================================ */
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter" && !sendBtn.disabled) sendCommand();
+        });
+        filterCategory.addEventListener("change", applyFilters);
+        filterStatus.addEventListener("change", applyFilters);
+        sortBy.addEventListener("change", applyFilters);
+
+        /* ================================================================
+           Fetch with timeout
+           ================================================================ */
+        function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            return fetch(url, { ...options, signal: controller.signal })
+                .finally(() => clearTimeout(timer));
+        }
+
+        /* ================================================================
+           Send command
+           ================================================================ */
+        async function sendCommand() {
+            const raw = input.value;
+            const result = validateInput(raw);
+
+            if (!result.valid) {
+                inputHint.textContent = result.error;
+                inputHint.className = "input-hint error";
+                input.classList.add("input-error");
+                input.focus();
+                return;
+            }
+
+            // Clear validation state
+            input.classList.remove("input-error");
+            inputHint.innerHTML = "&nbsp;";
+            inputHint.className = "input-hint info";
+
+            sendBtn.disabled = true;
+            input.disabled = true;
+            responseBox.className = "response-box visible";
+            responseLabel.textContent = "Assistant";
+            responseText.innerHTML = '<span class="spinner"></span> Thinking...';
+
+            try {
+                const res = await fetchWithTimeout("/api/command", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: result.text }),
+                });
+
+                let data;
+                try {
+                    data = await res.json();
+                } catch {
+                    throw { type: "server_error", message: "Received an invalid response from the server." };
+                }
+
+                if (data.error) {
+                    const errorType = data.error_type || "server_error";
+                    showResponseError(data.error, errorType);
+
+                    // Show retry for recoverable errors
+                    if (["api_error", "server_error", "database_error"].includes(errorType)) {
+                        showAlert(errorType, data.error, {
+                            retry: () => { input.value = raw; sendCommand(); },
+                        });
+                    }
+                } else {
+                    responseText.textContent = data.reply;
+                    allTasks = data.tasks || [];
+                    allCategories = data.categories || [];
+                    rebuildCategoryFilter();
+                    applyFilters();
+                }
+            } catch (err) {
+                if (err.type) {
+                    // Our structured error
+                    showResponseError(err.message, err.type);
+                } else if (err.name === "AbortError") {
+                    const msg = "Request timed out. The AI might be busy — please try again.";
+                    showResponseError(msg, "timeout_error");
+                    showAlert("timeout_error", msg, {
+                        retry: () => { input.value = raw; sendCommand(); },
+                    });
+                } else {
+                    const msg = navigator.onLine === false
+                        ? "You appear to be offline. Please check your connection."
+                        : "Cannot reach the server. Is it still running?";
+                    showResponseError(msg, "network_error");
+                    showAlert("network_error", msg, {
+                        retry: () => { input.value = raw; sendCommand(); },
+                    });
+                }
+            }
+
+            input.value = "";
+            sendBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+
+        function showResponseError(message, errorType) {
+            responseBox.className = "response-box visible response-error";
+            responseLabel.textContent = ERROR_TITLES[errorType] || "Error";
+            responseText.textContent = message;
+        }
+
+        /* ================================================================
+           Rebuild category dropdown
+           ================================================================ */
+        function rebuildCategoryFilter() {
+            const current = filterCategory.value;
+            filterCategory.innerHTML = '<option value="">All categories</option>';
+            allCategories.forEach(cat => {
+                const opt = document.createElement("option");
+                opt.value = cat;
+                opt.textContent = cat;
+                filterCategory.appendChild(opt);
+            });
+            if (allCategories.includes(current)) filterCategory.value = current;
+        }
+
+        /* ================================================================
+           Filter + sort + render
+           ================================================================ */
+        function applyFilters() {
+            let tasks = [...allTasks];
+
+            const catVal = filterCategory.value;
+            const statusVal = filterStatus.value;
+            const sortVal = sortBy.value;
+
+            if (catVal) tasks = tasks.filter(t => (t.category || "").toLowerCase() === catVal.toLowerCase());
+            if (statusVal) tasks = tasks.filter(t => t.status === statusVal);
+
+            if (sortVal === "due_date") {
+                tasks.sort((a, b) => {
+                    if (!a.due_date && !b.due_date) return 0;
+                    if (!a.due_date) return 1;
+                    if (!b.due_date) return -1;
+                    return a.due_date.localeCompare(b.due_date);
+                });
+            } else if (sortVal === "priority") {
+                const order = { urgent: 0, high: 1, medium: 2, low: 3 };
+                tasks.sort((a, b) => (order[a.priority] ?? 2) - (order[b.priority] ?? 2));
+            } else if (sortVal === "category") {
+                tasks.sort((a, b) => (a.category || "zzz").localeCompare(b.category || "zzz"));
+            }
+
+            renderTasks(tasks);
+        }
+
+        function resetFilters() {
+            filterCategory.value = "";
+            filterStatus.value = "";
+            sortBy.value = "id";
+            applyFilters();
+        }
+
+        /* ================================================================
+           Render
+           ================================================================ */
+        function renderTasks(tasks) {
+            if (!tasks || tasks.length === 0) {
+                const noTasks = allTasks.length === 0;
+                taskList.innerHTML = `<div class="empty-state">${noTasks ? "No tasks yet. Try adding one!" : "No tasks match the current filters."}</div>`;
+                taskCount.textContent = noTasks ? "" : `0 / ${allTasks.length} shown`;
+                return;
+            }
+
+            const showing = tasks.length < allTasks.length
+                ? `${tasks.length} / ${allTasks.length} shown`
+                : `${tasks.length} task${tasks.length === 1 ? "" : "s"}`;
+            taskCount.textContent = showing;
+
+            taskList.innerHTML = tasks.map(t => {
+                const isOverdue = t.overdue;
+                const cardClasses = [t.status, isOverdue ? "overdue" : ""].filter(Boolean).join(" ");
+                const col = categoryColor(t.category);
+
+                let duePart = "";
+                if (t.due_date) {
+                    const dueClass = isOverdue ? "due-label overdue" : "due-label";
+                    const prefix = isOverdue ? "Overdue: " : "Due: ";
+                    duePart = `<span class="${dueClass}">${prefix}${formatDate(t.due_date)}</span>`;
+                }
+
+                let catPart = "";
+                if (t.category) {
+                    catPart = `<span class="badge badge-category" style="background:${col.bg};color:${col.fg}">${escapeHtml(t.category)}</span>`;
+                }
+
+                return `
+                    <div class="task-card ${cardClasses}">
+                        <span class="task-id">#${t.id}</span>
+                        <div class="task-info">
+                            <div class="task-title">${escapeHtml(t.title)}</div>
+                            <div class="task-meta">
+                                <span class="badge badge-status ${t.status}">${t.status.replace("_", " ")}</span>
+                                <span class="badge badge-priority ${t.priority}">${t.priority}</span>
+                                ${duePart}
+                                ${catPart}
+                            </div>
+                        </div>
+                    </div>`;
+            }).join("");
+        }
+
+        /* ================================================================
+           Helpers
+           ================================================================ */
+        function escapeHtml(str) {
+            const d = document.createElement("div");
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            const parts = dateStr.split("-");
+            if (parts.length !== 3) return dateStr;
+            const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+            return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        }
+
+        /* ================================================================
+           Initial load with error handling
+           ================================================================ */
+        async function loadTasks() {
+            try {
+                const res = await fetchWithTimeout("/api/tasks", {}, 10000);
+                let data;
+                try {
+                    data = await res.json();
+                } catch {
+                    throw { type: "server_error" };
+                }
+
+                if (data.error) {
+                    throw { type: data.error_type || "server_error", message: data.error };
+                }
+
+                allTasks = data.tasks || data;
+                allCategories = data.categories || [];
+                rebuildCategoryFilter();
+                applyFilters();
+            } catch (err) {
+                const isTimeout = err.name === "AbortError";
+                const isOffline = !navigator.onLine;
+
+                let msg, errorType;
+                if (err.type) {
+                    msg = err.message || "Failed to load tasks.";
+                    errorType = err.type;
+                } else if (isTimeout) {
+                    msg = "Loading tasks timed out.";
+                    errorType = "timeout_error";
+                } else if (isOffline) {
+                    msg = "You appear to be offline.";
+                    errorType = "network_error";
+                } else {
+                    msg = "Cannot connect to the server. Is it running?";
+                    errorType = "network_error";
+                }
+
+                taskList.innerHTML = `<div class="empty-state">${escapeHtml(msg)}</div>`;
+                showAlert(errorType, msg, {
+                    retry: loadTasks,
+                });
+            }
+        }
+
+        // Also run a health check to surface config issues
+        async function checkHealth() {
+            try {
+                const res = await fetchWithTimeout("/api/health", {}, 5000);
+                const data = await res.json();
+                if (data.status === "unhealthy") {
+                    const issues = [];
+                    if (data.checks.api_key !== "ok") issues.push("API key: " + data.checks.api_key);
+                    if (data.checks.database !== "ok") issues.push("Database: " + data.checks.database);
+                    showAlert("config_error", issues.join(" | "), {
+                        title: "Setup Required",
+                    });
+                }
+            } catch {
+                // Health check is best-effort; initial load will surface errors
+            }
+        }
+
+        loadTasks();
+        checkHealth();
+    </script>
+</body>
+</html>
